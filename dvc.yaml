@@ -1,0 +1,97 @@
+stages:
+  load_data:
+    cmd: python src/data/load_data.py
+    deps:
+      - src/data/load_data.py
+    params:
+      - preprocess.sample_rate
+    outs:
+      - data/raw/asvspoof2019/protocols/train.csv
+      - data/raw/asvspoof2019/protocols/dev.csv
+      - data/raw/asvspoof2019/protocols/eval.csv
+    desc: "Load and organize ASVspoof 2019 dataset"
+    
+  preprocess:
+    cmd: python src/data/preprocess.py
+    deps:
+      - src/data/preprocess.py
+      - data/raw/asvspoof2019/protocols/train.csv
+      - data/raw/asvspoof2019/protocols/dev.csv
+    params:
+      - preprocess
+    outs:
+      - data/processed/train
+      - data/processed/dev
+    desc: "Preprocess audio files (resampling, normalization)"
+    
+  extract_mfcc:
+    cmd: python src/features/extract_mfcc.py
+    deps:
+      - src/features/extract_mfcc.py
+      - data/processed/train
+      - data/processed/dev
+    params:
+      - features.mfcc
+      - features.delta
+    outs:
+      - data/features/mfcc_train.pkl
+      - data/features/mfcc_dev.pkl
+    desc: "Extract MFCC features for Random Forest"
+    
+  extract_spectrogram:
+    cmd: python src/features/extract_spectrogram.py
+    deps:
+      - src/features/extract_spectrogram.py
+      - data/processed/train
+      - data/processed/dev
+    params:
+      - features.spectrogram
+    outs:
+      - data/features/spectrogram_train.npz
+      - data/features/spectrogram_dev.npz
+    desc: "Extract mel-spectrogram features for CNN"
+    
+  train_random_forest:
+    cmd: python src/models/train_random_forest.py
+    deps:
+      - src/models/train_random_forest.py
+      - data/features/mfcc_train.pkl
+      - data/features/mfcc_dev.pkl
+    params:
+      - models.random_forest
+      - training
+    outs:
+      - models/random_forest_model.pkl
+    metrics:
+      - metrics/rf_metrics.json:
+          cache: false
+    desc: "Train Random Forest classifier on MFCC features"
+    
+  train_cnn:
+    cmd: python src/models/train_cnn.py
+    deps:
+      - src/models/train_cnn.py
+      - data/features/spectrogram_train.npz
+      - data/features/spectrogram_dev.npz
+    params:
+      - models.cnn
+      - training
+    outs:
+      - models/cnn_model.h5
+    metrics:
+      - metrics/cnn_metrics.json:
+          cache: false
+    desc: "Train CNN model on spectrogram features"
+    
+  evaluate_asvspoof2021:
+    cmd: python src/evaluation/evaluate.py
+    deps:
+      - src/evaluation/evaluate.py
+      - models/random_forest_model.pkl
+      - models/cnn_model.h5
+    params:
+      - evaluation
+    metrics:
+      - metrics/evaluation_results.json:
+          cache: false
+    desc: "Evaluate models on ASVspoof 2021 dataset"
