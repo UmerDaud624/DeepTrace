@@ -1,279 +1,277 @@
-# DeepTrace
+# DeepTrace - AI-Powered Deepfake Detection System
 
-DeepTrace is an advanced Final Year Project (FYP) that leverages cutting-edge deep learning techniques for comprehensive deepfake detection in both audio and video media. Our system employs MFCC and spectrogram-based analysis for audio detection, Vision Transformers (ViTs) and Convolutional Neural Networks (CNNs) for video analysis, and an innovative ensemble approach that combines both modalities to achieve superior detection accuracy and reliability.
+A comprehensive MERN stack application for detecting deepfakes in images, videos, and audio files using advanced AI algorithms.
 
----
+## 🚀 Features
 
-## Table of Contents
+- **Multi-Modal Detection**: Support for image, video, and audio deepfake detection
+- **Real-time Analysis**: Fast processing with detailed confidence scores
+- **User Authentication**: Secure login/registration system
+- **Analysis History**: Track and review past analyses
+- **Detailed Reports**: Comprehensive analysis reports with technical details
+- **Modern UI**: Beautiful, responsive interface built with React and Material Tailwind
 
-- [DeepTrace](#deeptrace)
-  - [Table of Contents](#table-of-contents)
-  - [About The Project](#about-the-project)
-  - [Key Innovations](#key-innovations)
-  - [Features](#features)
-    - [Audio Deepfake Detection](#audio-deepfake-detection)
-    - [Video Deepfake Detection](#video-deepfake-detection)
-    - [Ensemble System](#ensemble-system)
-    - [Single File Analysis](#single-file-analysis)
-    - [Advanced Configuration](#advanced-configuration)
-  - [Dataset](#dataset)
-    - [Video Datasets](#video-datasets)
-    - [Audio Datasets](#audio-datasets)
-    - [Multi-Modal Datasets](#multi-modal-datasets)
-  - [Model Performance](#model-performance)
-    - [Individual Model Performance](#individual-model-performance)
-    - [Ensemble Performance](#ensemble-performance)
-  - [Contributing](#contributing)
-    - [Areas for Contribution](#areas-for-contribution)
-    - [Development Process](#development-process)
-    - [Code Standards](#code-standards)
-  - [License](#license)
-  - [Acknowledgments](#acknowledgments)
-  - [DeepTrace - Advancing Digital Media Authenticity Through Multi-Modal AI Detection](#deeptrace---advancing-digital-media-authenticity-through-multi-modal-ai-detection)
+## 🛠️ Tech Stack
 
----
+### Frontend
 
-## About The Project
+- **React 18** - Modern React with hooks
+- **Vite** - Fast build tool and development server
+- **Material Tailwind** - Beautiful UI components
+- **React Router** - Client-side routing
+- **Tailwind CSS** - Utility-first CSS framework
 
-In an era where synthetic media generation has become increasingly sophisticated, deepfakes pose significant threats to digital authenticity, privacy, and information integrity. DeepTrace tackles this challenge head-on by implementing a multi-modal deepfake detection system that analyzes both audio and video components of media files.
+### Backend
 
-Our approach goes beyond traditional single-modality detection by combining the strengths of audio and visual analysis through an ensemble methodology, resulting in more robust and accurate deepfake identification across diverse manipulation techniques.
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web application framework
+- **MySQL** - Relational database (Clever Cloud hosted)
+- **JWT** - JSON Web Tokens for authentication
+- **Multer** - File upload handling
+- **bcryptjs** - Password hashing
 
----
+### Database
 
-## Key Innovations
+- **MySQL 8.0** - Hosted on Clever Cloud
+- **Connection Pooling** - Optimized database connections
+- **Migrations** - Database schema management
 
-- **Audio Analysis Pipeline**: Advanced feature extraction using Mel-Frequency Cepstral Coefficients (MFCC) and spectrogram analysis to capture subtle artifacts in synthetic speech
-- **Video Detection Framework**: Hybrid approach combining Vision Transformers (ViTs) for global context understanding and CNNs for local feature detection
-- **Ensemble Fusion Strategy**: Intelligent combination of audio and video detection results using weighted voting and confidence-based decision making
-- **Multi-Scale Analysis**: Detection capabilities across various temporal and spatial scales to identify different types of manipulations
+## 📋 Prerequisites
 
----
+- Node.js (v18.0.0 or higher)
+- npm (v8.0.0 or higher)
+- MySQL database (provided via Clever Cloud)
 
-## Features
+## 🔧 Installation & Setup
 
-### Audio Deepfake Detection
-
-- **MFCC Feature Extraction**: Captures spectral characteristics and temporal dynamics of audio signals
-- **Spectrogram Analysis**: Time-frequency domain analysis to identify synthesis artifacts
-- **Voice Authenticity Assessment**: Detects voice cloning, speech synthesis, and audio manipulation
-
-### Video Deepfake Detection
-
-- **Vision Transformer Integration**: Leverages self-attention mechanisms for comprehensive facial analysis
-- **CNN-Based Feature Learning**: Captures fine-grained visual inconsistencies and temporal artifacts
-- **Face Swap Detection**: Identifies facial replacement and expression manipulation
-- **Lip-Sync Analysis**: Detects audio-visual synchronization inconsistencies
-
-### Ensemble System
-
-- **Multi-Modal Fusion**: Combines audio and video predictions for enhanced accuracy
-- **Confidence Scoring**: Provides reliability metrics for detection results
-- **Adaptive Weighting**: Dynamic adjustment of modality contributions based on content quality
-- **Explainable Results**: Visual and auditory highlights showing detected anomalies
-
-  ```bash
-  pip install -r requirements.txt
-- **API Integration**: RESTful API for seamless integration into existing workflows
-
-  ```bash
-  python download_models.py
-  ```
-
-  ```bash
-  python -m deeptrace.test_installation
-
-  ```
-
-  Final Detection Result + Explanations
-
-### Single File Analysis
+### 1. Clone the Repository
 
 ```bash
-# Analyze video file with both audio and video detection
-python deeptrace_detect.py --input path/to/media.mp4 --mode ensemble
-
-# Audio-only detection with MFCC analysis
-python deeptrace_detect.py --input path/to/audio.wav --mode audio --features mfcc,spectrogram
-
-# Video-only detection using ViT + CNN
-python deeptrace_detect.py --input path/to/video.mp4 --mode video --models vit,cnn
-### Audio Processing
-- **Librosa**: Advanced audio analysis and feature extraction
-
-### Batch Processing
-
-```bash
-# Process multiple files in a directory
-python batch_detect.py --input_dir path/to/media_files --output_dir results --batch_size 16
-### Video Processing
-- **OpenCV**: Computer vision and video processing
-
-### Web Interface
-
-```bash
-# Launch Streamlit dashboard
-
-streamlit run app.py
-
-# Start Flask API server
-python api_server.py --port 5000
+git clone <repository-url>
+cd DeepTrace
 ```
 
-- **Plotly**: Interactive visualization for web interface
-- **SHAP**: Model explainability and interpretability
-
-### Advanced Configuration
+### 2. Install All Dependencies
 
 ```bash
-# Custom ensemble weights
-python deeptrace_detect.py --input media.mp4 --audio_weight 0.6 --video_weight 0.4
-
-# Enable detailed explanations
-python deeptrace_detect.py --input media.mp4 --explain --save_heatmaps
+npm run install:all
 ```
 
-1. **Clone the repository:**
-bash
-git clone <https://github.com/usman-wf/DeepTrace.git>
+### 3. Environment Configuration
 
-  ```bash
-  # On Windows (PowerShell):
-  .\deeptrace_env\Scripts\Activate.ps1
+Create a `.env` file in the `backend` directory:
 
-
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-1. **Download pre-trained models:**
-
-  ```bash
-  python download_models.py
-
-
-5. **Verify installation:**
-
-
-  ```bash
-  python -m deeptrace.test_installation
-
-## Usage
-
-
-### Single File Analysis
 ```bash
-# Analyze video file with both audio and video detection
-python deeptrace_detect.py --input path/to/media.mp4 --mode ensemble
-# Audio-only detection with MFCC analysis
-python deeptrace_detect.py --input path/to/audio.wav --mode audio --features mfcc,spectrogram
-
-
-
-
-
-# Start Flask API server
-python api_server.py --port 5000
-
-### Advanced Configuration
-```bash
-# Custom ensemble weights
-python deeptrace_detect.py --input media.mp4 --audio_weight 0.6 --video_weight 0.4
-
-# Enable detailed explanations
-python deeptrace_detect.py --input media.mp4 --explain --save_heatmaps
+cd backend
+cp .env.example .env
 ```
 
----
+The `.env` file should contain:
 
-## Dataset
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
 
-Our models are trained and evaluated on a comprehensive collection of datasets to ensure robustness across various deepfake generation techniques:
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
 
-### Video Datasets
+# CORS Configuration
+FRONTEND_URL=http://localhost:3000
 
-- **FaceForensics++**: High-quality face swap and expression manipulation
-- **Deepfake Detection Challenge (DFDC)**: Large-scale diverse deepfake dataset
-- **CelebDF**: Celebrity deepfake detection dataset
-- **DeeperForensics**: High-resolution deepfake detection benchmark
+# File Upload Configuration
+MAX_FILE_SIZE=50MB
+UPLOAD_PATH=uploads/
+```
 
-### Audio Datasets
+### 4. Database Setup
 
-- **ASVspoof**: Audio spoofing and voice conversion detection
-- **WaveFake**: Neural vocoder-generated speech detection
-- **FakeAVCeleb**: Audio-visual deepfake dataset
-- **SVDD**: Speaker verification and deepfake detection
+```bash
+npm run backend:setup
+```
 
-### Multi-Modal Datasets
+### 5. Start Development Servers
 
-- **FakeAVCeleb**: Synchronized audio-visual deepfake content
-- **DFDC**: Combined audio-visual manipulation detection
-- **Custom Synthesis Dataset**: In-house generated content for specific scenarios
+```bash
+# Start both frontend and backend simultaneously
+npm run dev
 
----
+# Or start them separately:
+npm run backend:dev  # Backend on http://localhost:5000
+npm run frontend:dev # Frontend on http://localhost:3000
+```
 
-## Model Performance
+## 📁 Project Structure
 
-### Individual Model Performance
+```
+DeepTrace/
+├── backend/                 # Node.js/Express backend
+│   ├── config/             # Database and environment configuration
+│   ├── database/           # Database schema and migrations
+│   ├── middleware/         # Express middleware (auth, validation)
+│   ├── routes/            # API route handlers
+│   ├── scripts/           # Utility scripts (database setup)
+│   ├── uploads/           # File upload directory
+│   └── server.js          # Main server file
+├── frontend/UI/           # React frontend
+│   ├── public/           # Static assets
+│   ├── src/
+│   │   ├── components/   # Reusable React components
+│   │   ├── contexts/     # React contexts (Auth, Theme)
+│   │   ├── pages/        # Page components
+│   │   ├── services/     # API service functions
+│   │   ├── utils/        # Utility functions
+│   │   └── widgets/      # UI widgets and layouts
+│   └── package.json
+├── articles/             # Research papers and documentation
+└── package.json         # Root package.json for scripts
+```
 
-| Modality | Approach | Accuracy | Precision | Recall | F1-Score |
-|----------|----------|----------|-----------|--------|----------|
-| Audio | MFCC + DNN | 92.3% | 91.8% | 92.7% | 92.2% |
-| Audio | Spectrogram + CNN | 89.6% | 88.9% | 90.3% | 89.6% |
-| Video | ViT | 94.1% | 93.5% | 94.8% | 94.1% |
-| Video | CNN | 91.7% | 90.9% | 92.6% | 91.7% |
+## 🔌 API Endpoints
 
-### Ensemble Performance
+### Authentication
 
-| Configuration | Accuracy | Precision | Recall | F1-Score | AUC-ROC |
-|---------------|----------|-----------|--------|----------|---------|
-| Audio + Video Ensemble | **96.8%** | **96.2%** | **97.4%** | **96.8%** | **0.987** |
-| Weighted Fusion | 96.4% | 95.9% | 97.0% | 96.4% | 0.984 |
-| Majority Voting | 95.2% | 94.7% | 95.8% | 95.2% | 0.978 |
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
 
----
+### File Upload
 
-## Contributing
+- `POST /api/upload` - Upload file for analysis
+- `GET /api/upload/history` - Get upload history
+- `DELETE /api/upload/:id` - Delete uploaded file
 
-We welcome contributions from the research community! Here's how you can help:
+### Analysis
 
-### Areas for Contribution
+- `POST /api/analysis/analyze` - Start deepfake analysis
+- `GET /api/analysis/:id` - Get analysis result
+- `GET /api/analysis/history` - Get analysis history
+- `POST /api/analysis/:id/report` - Generate detailed report
 
-- **Model Improvements**: Enhanced architectures, novel feature extraction methods
-- **Dataset Expansion**: New datasets, data augmentation techniques
-- **Performance Optimization**: Model compression, inference acceleration
-- **Evaluation Metrics**: New benchmarks, robustness testing
-- **Documentation**: Code documentation, tutorials, examples
+### Health Check
 
-### Development Process
+- `GET /api/health` - Server health status
+
+## 🚦 Available Scripts
+
+### Root Level
+
+- `npm run dev` - Start both frontend and backend in development mode
+- `npm run install:all` - Install dependencies for all projects
+- `npm run backend:dev` - Start backend development server
+- `npm run frontend:dev` - Start frontend development server
+- `npm run backend:setup` - Initialize database schema
+
+### Backend (`cd backend`)
+
+- `npm start` - Start production server
+- `npm run dev` - Start development server with nodemon
+- `node scripts/setup-database.js` - Setup database tables
+
+### Frontend (`cd frontend/UI`)
+
+- `npm run dev` - Start Vite development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+## 🔒 Security Features
+
+- **JWT Authentication** - Secure token-based authentication
+- **Password Hashing** - bcrypt for secure password storage
+- **Rate Limiting** - Prevent API abuse
+- **CORS Protection** - Configured for secure cross-origin requests
+- **Input Validation** - Server-side validation for all inputs
+- **File Upload Security** - Secure file handling with type validation
+
+## 🗄️ Database Schema
+
+### Users Table
+
+- User authentication and profile information
+- Encrypted password storage
+- Timestamps for account creation and updates
+
+### Uploads Table
+
+- File metadata and storage information
+- Links to user accounts
+- File type and size tracking
+
+### Analyses Table
+
+- Deepfake analysis results
+- Confidence scores and processing metrics
+- JSON storage for detailed analysis data
+
+### Reports Table
+
+- Detailed analysis reports
+- User-generated report data
+- Links to analyses and users
+
+## 🔧 Development
+
+### Adding New Features
+
+1. Create API endpoints in `backend/routes/`
+2. Add database migrations if needed
+3. Create frontend components in `frontend/UI/src/`
+4. Update API service functions in `frontend/UI/src/services/api.js`
+
+### Database Changes
+
+1. Update schema in `backend/database/schema.sql`
+2. Run `npm run backend:setup` to apply changes
+3. Update API endpoints to use new schema
+
+## 🚀 Deployment
+
+### Backend Deployment
+
+- Ensure all environment variables are set in production
+- Use `npm start` for production server
+- Configure reverse proxy (nginx) if needed
+
+### Frontend Deployment
+
+- Run `npm run build` in `frontend/UI/`
+- Serve the `dist/` directory with a web server
+- Configure environment variables for production API URL
+
+## 📝 Environment Variables
+
+### Backend (.env)
+
+### Frontend (.env)
+
+```env
+VITE_API_URL=https://your-backend-domain.com/api
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-### Code Standards
+## 📄 License
 
-- Follow PEP 8 style guidelines
-- Include comprehensive docstrings
-- Add unit tests for new features
-- Update documentation as needed
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
+## 🆘 Support
 
-## License
+For support and questions:
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for complete details.
+- Create an issue in the repository
+- Check the documentation in the `articles/` directory
+- Review the API documentation above
 
----
+## 🙏 Acknowledgments
 
-## Acknowledgments
-
-- **Research Community**: Thanks to the developers of FaceForensics++, DFDC, and other benchmark datasets
-- **Open Source Libraries**: Gratitude to PyTorch, Transformers, Librosa, and OpenCV communities
-- **Academic Advisors**: Special thanks to our project supervisors and mentors
-
----
-
-## DeepTrace - Advancing Digital Media Authenticity Through Multi-Modal AI Detection
+- Research papers in the `articles/` directory
+- Material Tailwind for UI components
+- Clever Cloud for database hosting
+- Open source community for various packages and tools

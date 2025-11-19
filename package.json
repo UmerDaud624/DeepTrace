@@ -1,0 +1,36 @@
+{
+  "name": "deeptrace-mern",
+  "version": "1.0.0",
+  "description": "DeepTrace - AI-powered Deepfake Detection System (MERN Stack)",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:dev": "cd frontend/UI && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "frontend:build": "cd frontend/UI && npm run build",
+    "backend:setup": "cd backend && node scripts/setup-database.js",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend/UI && npm install",
+    "start": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
+    "verify": "node scripts/verify-setup.js",
+    "setup": "npm run install:all && npm run backend:setup"
+  },
+  "keywords": [
+    "deepfake",
+    "detection",
+    "ai",
+    "mern",
+    "react",
+    "node",
+    "express",
+    "mysql"
+  ],
+  "author": "DeepTrace Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
