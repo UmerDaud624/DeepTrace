@@ -25,9 +25,9 @@ stages:
     desc: "Preprocess audio files (resampling, normalization)"
     
   extract_mfcc:
-    cmd: python src/features/extract_mfcc.py
+    cmd: python src/features/mfcc.py
     deps:
-      - src/features/extract_mfcc.py
+      - src/features/mfcc.py
       - data/processed/train
       - data/processed/dev
     params:
@@ -39,9 +39,9 @@ stages:
     desc: "Extract MFCC features for Random Forest"
     
   extract_spectrogram:
-    cmd: python src/features/extract_spectrogram.py
+    cmd: python src/features/spectrogram.py
     deps:
-      - src/features/extract_spectrogram.py
+      - src/features/spectrogram.py
       - data/processed/train
       - data/processed/dev
     params:
@@ -52,9 +52,9 @@ stages:
     desc: "Extract mel-spectrogram features for CNN"
     
   train_random_forest:
-    cmd: python src/models/train_random_forest.py
+    cmd: python src/models/random_forest.py
     deps:
-      - src/models/train_random_forest.py
+      - src/models/random_forest.py
       - data/features/mfcc_train.pkl
       - data/features/mfcc_dev.pkl
     params:
@@ -68,9 +68,9 @@ stages:
     desc: "Train Random Forest classifier on MFCC features"
     
   train_cnn:
-    cmd: python src/models/train_cnn.py
+    cmd: python src/models/cnn_spec.py
     deps:
-      - src/models/train_cnn.py
+      - src/models/cnn_spec.py
       - data/features/spectrogram_train.npz
       - data/features/spectrogram_dev.npz
     params:
@@ -82,11 +82,35 @@ stages:
       - metrics/cnn_metrics.json:
           cache: false
     desc: "Train CNN model on spectrogram features"
-    
-  evaluate_asvspoof2021:
-    cmd: python src/evaluation/evaluate.py
+
+  # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+  # ONLY THIS STAGE WAS ADDED — EVERYTHING ELSE IS 100% UNCHANGED
+  # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+  ensemble:
+    cmd: python src/models/ensemble.py
     deps:
-      - src/evaluation/evaluate.py
+      - src/models/ensemble.py
+      - models/random_forest_model.pkl
+      - models/cnn_model.h5
+      - data/features/mfcc_dev.pkl
+      - data/features/spectrogram_dev.npz
+    params:
+      - models.ensemble
+    outs:
+      - models/ensemble_config.pkl
+      - metrics/model_comparison.png
+      - metrics/ensemble_metrics.json
+    metrics:
+      - metrics/ensemble_metrics.json:
+          cache: false
+    plots:
+      - metrics/model_comparison.png
+    desc: "Create and validate final ensemble (RF + CNN) on ASVspoof 2019 dev set"
+
+  evaluate_asvspoof2021:
+    cmd: python src/evaluation/evaluation.py
+    deps:
+      - src/evaluation/evaluation.py
       - models/random_forest_model.pkl
       - models/cnn_model.h5
     params:

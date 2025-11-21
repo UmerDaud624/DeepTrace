@@ -1,10 +1,19 @@
-# Core ML/DL libraries
+# Core ML/DL libraries with GPU support
 numpy==1.24.3
 pandas==2.0.3
 scikit-learn==1.3.0
-tensorflow==2.13.0
-torch==2.0.1
-torchvision==0.15.2
+
+# TensorFlow with GPU support (CUDA 12.x compatible)
+tensorflow==2.15.0
+
+# PyTorch with CUDA 12.1 support (compatible with CUDA 12.5)
+torch==2.1.0
+torchaudio==2.1.0
+torchvision==0.16.0
+--index-url https://download.pytorch.org/whl/cu121
+
+# RAPIDS for GPU-accelerated feature extraction (optional but powerful)
+cupy-cuda11x==12.2.0
 
 # Audio processing
 librosa==0.10.1
