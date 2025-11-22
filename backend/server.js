@@ -1,16 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
-import { testConnection } from './config/database.js';
-import { config } from './config/env.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import { testConnection } from "./config/database.js";
+import { config } from "./config/env.js";
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import uploadRoutes from './routes/upload.js';
-import analysisRoutes from './routes/analysis.js';
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
+import uploadRoutes from "./routes/upload.js";
+import analysisRoutes from "./routes/analysis.js";
 
 const app = express();
 
@@ -19,64 +19,86 @@ app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: config.RATE_LIMIT_WINDOW,
+  max: config.RATE_LIMIT_MAX,
+  message: "Too many requests from this IP, please try again later.",
 });
 app.use(limiter);
 
 // CORS configuration
-app.use(cors({
-  origin: config.FRONTEND_URL,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+const allowedOrigins = String(config.CORS_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+// Build a robust allowlist including common dev origins
+const originAllowlist = new Set(allowedOrigins);
+if (config.FRONTEND_URL) originAllowlist.add(config.FRONTEND_URL);
+if (config.NODE_ENV === "development") {
+  originAllowlist.add("http://localhost:5173");
+  originAllowlist.add("http://127.0.0.1:5173");
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests or same-origin
+      if (!origin) return callback(null, true);
+      if (originAllowlist.size === 0) return callback(null, true);
+      if (originAllowlist.has(origin)) return callback(null, true);
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Body parsing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: config.MAX_FILE_SIZE }));
+app.use(express.urlencoded({ extended: true, limit: config.MAX_FILE_SIZE }));
 
 // Logging middleware
-if (config.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+if (config.NODE_ENV === "development") {
+  app.use(morgan("dev"));
 }
 
 // Static files
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static(config.UPLOAD_DIR));
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    message: 'DeepTrace API is running',
+    status: "OK",
+    message: "DeepTrace API is running",
     timestamp: new Date().toISOString(),
-    environment: config.NODE_ENV
+    environment: config.NODE_ENV,
   });
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/analysis', analysisRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/analysis", analysisRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use("*", (req, res) => {
   res.status(404).json({
-    status: 'error',
-    message: 'Route not found'
+    status: "error",
+    message: "Route not found",
   });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  
+  console.error("Error:", err);
+
   res.status(err.status || 500).json({
-    status: 'error',
-    message: config.NODE_ENV === 'development' ? err.message : 'Internal server error',
-    ...(config.NODE_ENV === 'development' && { stack: err.stack })
+    status: "error",
+    message:
+      config.NODE_ENV === "development" ? err.message : "Internal server error",
+    ...(config.NODE_ENV === "development" && { stack: err.stack }),
   });
 });
 
@@ -86,7 +108,7 @@ const startServer = async () => {
     // Test database connection
     const dbConnected = await testConnection();
     if (!dbConnected) {
-      console.error('Failed to connect to database. Exiting...');
+      console.error("Failed to connect to database. Exiting...");
       process.exit(1);
     }
 
@@ -95,10 +117,12 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${config.PORT}`);
       console.log(`📱 Environment: ${config.NODE_ENV}`);
       console.log(`🌐 Frontend URL: ${config.FRONTEND_URL}`);
-      console.log(`📊 Health check: http://localhost:${config.PORT}/api/health`);
+      console.log(
+        `📊 Health check: http://localhost:${config.PORT}/api/health`
+      );
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 };
