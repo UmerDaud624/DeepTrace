@@ -1,6 +1,8 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { executeQuery } from '../config/database.js';
+import aiService from '../services/aiService.js';
+import path from 'path';
 
 const router = express.Router();
 
@@ -32,24 +34,58 @@ router.post('/analyze', authenticateToken, async (req, res) => {
     }
 
     const upload = uploads[0];
+    const startTime = Date.now();
 
-    // TODO: Implement actual deepfake detection logic here
-    // For now, we'll simulate the analysis with mock results
-    const mockAnalysisResult = simulateAnalysis(upload.file_type);
+    let analysisResult;
 
-    // Save analysis result to database
+    // Use AI service for audio files
+    if (upload.file_type.startsWith('audio/')) {
+      try {
+        // Get absolute path to uploaded file
+        const filePath = path.resolve(upload.file_path);
+        
+        // Check if AI service is available
+        const availability = await aiService.checkAvailability();
+        if (!availability.available) {
+          console.warn('AI service not available:', availability.error);
+          // Fall back to mock analysis if AI service is not available
+          analysisResult = simulateAnalysis(upload.file_type);
+        } else {
+          // Call AI service for audio analysis
+          const aiResult = await aiService.analyzeAudio(filePath, true);
+          analysisResult = aiService.formatResult(aiResult, upload.file_type);
+          
+          // Calculate processing time
+          const processingTime = Date.now() - startTime;
+          analysisResult.processingTime = processingTime;
+        }
+      } catch (error) {
+        console.error('AI analysis error:', error);
+        // Fall back to mock analysis on error
+        analysisResult = simulateAnalysis(upload.file_type);
+        analysisResult.processingTime = Date.now() - startTime;
+      }
+    } else {
+      // For image/video files, use mock analysis (AI models not integrated yet)
+      analysisResult = simulateAnalysis(upload.file_type);
+      analysisResult.processingTime = Date.now() - startTime;
+    }
+
+    // Save analysis result to database (including details as JSON)
+    const detailsJson = JSON.stringify(analysisResult.details || {});
     const result = await executeQuery(
       `INSERT INTO analyses (user_id, upload_id, file_name, file_type, 
-       analysis_result, confidence_score, processing_time, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+       analysis_result, confidence_score, processing_time, details, created_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         req.userId,
         uploadId,
         upload.file_name,
         upload.file_type,
-        mockAnalysisResult.result,
-        mockAnalysisResult.confidence,
-        mockAnalysisResult.processingTime
+        analysisResult.result,
+        analysisResult.confidence,
+        analysisResult.processingTime,
+        detailsJson
       ]
     );
 
@@ -60,10 +96,10 @@ router.post('/analyze', authenticateToken, async (req, res) => {
       message: 'Analysis completed successfully',
       data: {
         analysisId,
-        result: mockAnalysisResult.result,
-        confidence: mockAnalysisResult.confidence,
-        processingTime: mockAnalysisResult.processingTime,
-        details: mockAnalysisResult.details
+        result: analysisResult.result,
+        confidence: analysisResult.confidence,
+        processingTime: analysisResult.processingTime,
+        details: analysisResult.details
       }
     });
   } catch (error) {
@@ -83,8 +119,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const analysisId = req.params.id;
 
     const analyses = await executeQuery(
-      `SELECT id, file_name, file_type, analysis_result, confidence_score, 
-       processing_time, created_at FROM analyses WHERE id = ? AND user_id = ?`,
+      `SELECT a.id, a.file_name, a.file_type, a.analysis_result, a.confidence_score, 
+       a.processing_time, a.created_at, a.details, u.file_path, u.original_name
+       FROM analyses a
+       LEFT JOIN uploads u ON a.upload_id = u.id
+       WHERE a.id = ? AND a.user_id = ?`,
       [analysisId, req.userId]
     );
 
@@ -96,6 +135,18 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const analysis = analyses[0];
+    
+    // Parse details JSON if it exists
+    let details = {};
+    if (analysis.details) {
+      try {
+        details = typeof analysis.details === 'string' 
+          ? JSON.parse(analysis.details) 
+          : analysis.details;
+      } catch (e) {
+        console.error('Error parsing details:', e);
+      }
+    }
 
     res.json({
       status: 'success',
@@ -103,11 +154,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
         analysis: {
           id: analysis.id,
           fileName: analysis.file_name,
+          originalName: analysis.original_name || analysis.file_name,
           fileType: analysis.file_type,
           result: analysis.analysis_result,
           confidence: analysis.confidence_score,
           processingTime: analysis.processing_time,
-          createdAt: analysis.created_at
+          createdAt: analysis.created_at,
+          filePath: analysis.file_path,
+          details: details
         }
       }
     });

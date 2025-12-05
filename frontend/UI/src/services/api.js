@@ -165,11 +165,43 @@ export const uploadAPI = {
 
 // Analysis API functions
 export const analysisAPI = {
-  analyzeFile: (fileId, analysisType = 'deepfake') => 
-    apiClient.post('/analysis/analyze', { fileId, analysisType }),
+  analyzeFile: (uploadId, analysisType = 'deepfake') => 
+    apiClient.post('/analysis/analyze', { uploadId }),
   getAnalysisResult: (analysisId) => apiClient.get(`/analysis/${analysisId}`),
-  getAnalysisHistory: () => apiClient.get('/analysis/history'),
+  getAnalysisHistory: () => apiClient.get('/analysis'),
   generateReport: (analysisId) => apiClient.post(`/analysis/${analysisId}/report`),
+};
+
+// Guest API functions (no authentication required)
+export const guestAPI = {
+  uploadFile: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Don't send auth token for guest uploads
+    const url = `${apiClient.baseURL}/guest/upload`;
+    return fetch(url, {
+      method: 'POST',
+      body: formData,
+    }).then(res => res.json());
+  },
+  analyzeFile: (tempId, filePath, fileType) => 
+    fetch(`${apiClient.baseURL}/guest/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tempId, filePath, fileType }),
+    }).then(res => res.json()),
+  analyzeTestFile: (testFileName, fileType = 'audio') =>
+    fetch(`${apiClient.baseURL}/guest/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ testFileName, fileType }),
+    }).then(res => res.json()),
+  getTestFiles: () =>
+    fetch(`${apiClient.baseURL}/guest/test-files`)
+      .then(res => res.json()),
+  getAnalysisResult: (analysisId) => 
+    fetch(`${apiClient.baseURL}/guest/report/${analysisId}`)
+      .then(res => res.json()),
 };
 
 // Health check

@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getBackgroundClasses, getTextClasses, getGlowOrbClasses, getCardClasses } from "@/utils/theme";
+import { analysisAPI, guestAPI } from "@/services/api";
 
 const DUMMY_REPORTS = {
   sampleFile: {
@@ -62,7 +63,12 @@ export function Report() {
   const { id } = useParams();
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(true);
-  const data = useMemo(() => DUMMY_REPORTS[id] || null, [id]);
+  const [error, setError] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  
+  // Check if this is a guest report
+  const searchParams = new URLSearchParams(window.location.search);
+  const isGuest = searchParams.get('guest') === 'true';
 
   // Helper functions for color coding
   const getRiskColor = (percentage) => {
@@ -97,10 +103,70 @@ export function Report() {
   };
 
   useEffect(() => {
-    // simulate async load
-    const t = setTimeout(() => setLoading(false), 200);
-    return () => clearTimeout(t);
+    const fetchReportData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Check if it's a dummy report ID first
+        if (DUMMY_REPORTS[id]) {
+          setReportData(DUMMY_REPORTS[id]);
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch real data from API (guest or authenticated)
+        const response = isGuest 
+          ? await guestAPI.getAnalysisResult(id)
+          : await analysisAPI.getAnalysisResult(id);
+        
+        if (response.status === 'success' && response.data?.analysis) {
+          const analysis = response.data.analysis;
+          
+          // Calculate risk percentage (invert confidence for deepfake, use as-is for authentic)
+          let resultPercentage;
+          if (analysis.result === 'deepfake') {
+            // For deepfake, confidence is how confident we are it's fake (0-1)
+            resultPercentage = Math.round((analysis.confidence || 0) * 100);
+          } else {
+            // For authentic, confidence is how confident we are it's real
+            // Show as low risk (inverse)
+            resultPercentage = Math.round((1 - (analysis.confidence || 0)) * 100);
+          }
+          
+          // Map backend data to frontend format
+          const mappedData = {
+            id: analysis.id.toString(),
+            title: analysis.originalName || analysis.fileName,
+            resultPercentage: resultPercentage,
+            analysisResult: analysis.result === 'deepfake' 
+              ? (resultPercentage >= 80 ? 'High risk detected' : resultPercentage >= 60 ? 'Moderate risk' : 'Low risk')
+              : 'Low risk - Authentic',
+            mediaUrl: analysis.filePath ? `/uploads/${analysis.filePath.split(/[/\\]/).pop()}` : '#',
+            mediaType: analysis.fileType?.startsWith('audio/') ? 'audio' : 'video',
+            uploadDate: new Date(analysis.createdAt).toISOString().split('T')[0],
+            processingTime: `${(analysis.processingTime / 1000).toFixed(1)} seconds`,
+            details: analysis.details || {},
+            rawResult: analysis.result,
+            rawConfidence: analysis.confidence
+          };
+          
+          setReportData(mappedData);
+        } else {
+          setError('Report not found');
+        }
+      } catch (err) {
+        console.error('Error fetching report:', err);
+        setError(err.message || 'Failed to load report');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReportData();
   }, [id]);
+  
+  const data = reportData;
 
   return (
     <div className={`min-h-screen ${getBackgroundClasses(isDark)}`}>
@@ -153,6 +219,23 @@ export function Report() {
                     ? 'bg-gradient-to-r from-pink-400 to-purple-400'
                     : 'bg-gradient-to-r from-purple-600 to-indigo-600'
                 }`}>Loading report...</Typography>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16">
+                <ExclamationTriangleIcon className="h-20 w-20 text-gray-600 mx-auto mb-6" />
+                <Typography variant="h5" className="font-semibold mb-3 text-gray-300">
+                  Error Loading Report
+                </Typography>
+                <Typography variant="paragraph" className="text-gray-400 mb-6">
+                  {error}
+                </Typography>
+                <Link
+                  to="/history"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/50 transition-all duration-300 font-medium"
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                  Go to History
+                </Link>
               </div>
             ) : data ? (
               <div className="space-y-6">
@@ -330,20 +413,53 @@ export function Report() {
                     </Typography>
                     <div className={`p-5 rounded-lg border-l-4 ${
                       data.resultPercentage >= 80 ? 'bg-red-500/60 border-red-500' :
-                      data.resultPercentage >= 60 ? 'bg-red-500/60 border-red-500' :
-                      isDark ? 'bg-white/20 border-white' : 'bg-gray-800/20 border-gray-800'
+                      data.resultPercentage >= 60 ? 'bg-orange-500/60 border-orange-500' :
+                      isDark ? 'bg-green-500/20 border-green-500' : 'bg-green-500/20 border-green-500'
                     }`}>
                       <Typography 
                         variant="paragraph" 
                         className={`font-medium leading-relaxed ${getTextClasses(isDark)}`}
                       >
-                        {data.resultPercentage >= 80 
-                          ? "⚠️ High Risk: This media shows strong indicators of being artificially generated or manipulated. The analysis detected significant anomalies consistent with deepfake technology."
-                          : data.resultPercentage >= 60 
-                          ? "⚡ Moderate Risk: Some suspicious patterns detected in the media. Further analysis and verification recommended before drawing conclusions."
-                          : "✅ Low Risk: This media appears to be authentic with minimal signs of manipulation. The analysis found no significant indicators of deepfake technology."
+                        {data.rawResult === 'deepfake' 
+                          ? (data.resultPercentage >= 80 
+                              ? `⚠️ High Risk: This audio shows strong indicators of being artificially generated or manipulated. The ensemble model (Random Forest + CNN) detected significant anomalies with ${((data.rawConfidence || 0) * 100).toFixed(1)}% confidence.`
+                              : data.resultPercentage >= 60 
+                              ? `⚡ Moderate Risk: Some suspicious patterns detected in the audio. The ensemble model indicates ${((data.rawConfidence || 0) * 100).toFixed(1)}% confidence of manipulation. Further verification recommended.`
+                              : `⚠️ Low-Moderate Risk: The audio shows some indicators of manipulation with ${((data.rawConfidence || 0) * 100).toFixed(1)}% confidence.`)
+                          : `✅ Low Risk: This audio appears to be authentic with minimal signs of manipulation. The ensemble model found ${((1 - (data.rawConfidence || 0)) * 100).toFixed(1)}% confidence of authenticity.`
                         }
                       </Typography>
+                      {data.details && Object.keys(data.details).length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/20">
+                          <Typography variant="small" className={`font-semibold mb-2 ${getTextClasses(isDark)}`}>
+                            Technical Details:
+                          </Typography>
+                          {data.details.probabilities && (
+                            <div className="space-y-1 text-sm">
+                              <div className={getTextClasses(isDark, 'muted')}>
+                                Bonafide: {((data.details.probabilities.bonafide || 0) * 100).toFixed(1)}%
+                              </div>
+                              <div className={getTextClasses(isDark, 'muted')}>
+                                Spoof: {((data.details.probabilities.spoof || 0) * 100).toFixed(1)}%
+                              </div>
+                            </div>
+                          )}
+                          {data.details.technicalMetrics && (
+                            <div className="mt-2 space-y-1 text-sm">
+                              {data.details.technicalMetrics.duration && (
+                                <div className={getTextClasses(isDark, 'muted')}>
+                                  Duration: {data.details.technicalMetrics.duration}
+                                </div>
+                              )}
+                              {data.details.technicalMetrics.numChunks && (
+                                <div className={getTextClasses(isDark, 'muted')}>
+                                  Chunks Analyzed: {data.details.technicalMetrics.numChunks}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardBody>
                 </Card>

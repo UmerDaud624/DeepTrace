@@ -25,11 +25,29 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept images and videos
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
+  // Accept images, videos, and audio files (including FLAC, WAV, MP3, OGG, etc.)
+  const allowedMimeTypes = [
+    'image/',
+    'video/',
+    'audio/',
+    'audio/flac',  // Explicit FLAC MIME type
+    'audio/x-flac' // Alternative FLAC MIME type
+  ];
+  
+  // Also check file extension as fallback (some browsers may not set correct mimetype)
+  const allowedExtensions = ['.wav', '.mp3', '.flac', '.ogg', '.m4a', '.aac', '.wma'];
+  const fileExt = path.extname(file.originalname).toLowerCase();
+  
+  // Check MIME type (including exact matches for FLAC)
+  const isValidMimeType = allowedMimeTypes.some(type => 
+    file.mimetype.startsWith(type) || file.mimetype === type
+  );
+  const isValidExtension = allowedExtensions.includes(fileExt);
+  
+  if (isValidMimeType || isValidExtension) {
     cb(null, true);
   } else {
-    cb(new Error('Only image, video, and audio files are allowed'), false);
+    cb(new Error('Only image, video, and audio files are allowed (WAV, MP3, FLAC, OGG, etc.)'), false);
   }
 };
 

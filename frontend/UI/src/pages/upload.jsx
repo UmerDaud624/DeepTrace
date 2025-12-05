@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Card,
   CardBody,
@@ -21,10 +21,14 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getBackgroundClasses, getTextClasses, getGlowOrbClasses, getCardClasses } from "@/utils/theme";
+import { uploadAPI, analysisAPI, guestAPI } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Upload() {
   const navigate = useNavigate();
   const { isDark } = useTheme();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -32,9 +36,22 @@ export function Upload() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
   const fileInputRef = useRef(null);
+  const [testFiles, setTestFiles] = useState([]);
+  const [selectedTestFile, setSelectedTestFile] = useState("");
+  const [loadingTestFiles, setLoadingTestFiles] = useState(false);
 
   // Supported file types
-  const audioTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/m4a", "audio/aac"];
+  const audioTypes = [
+    "audio/mpeg", 
+    "audio/wav", 
+    "audio/mp3", 
+    "audio/m4a", 
+    "audio/aac",
+    "audio/flac",      // FLAC MIME type
+    "audio/x-flac",    // Alternative FLAC MIME type
+    "audio/ogg",       // OGG audio
+    "audio/wma"        // WMA audio
+  ];
   const videoTypes = ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/mkv"];
   const supportedTypes = [...audioTypes, ...videoTypes];
 
@@ -68,12 +85,37 @@ export function Upload() {
     const validFiles = [];
     const invalidFiles = [];
 
+    // Supported file extensions as fallback (for browsers that don't set correct MIME types)
+    const audioExtensions = ['.wav', '.mp3', '.flac', '.ogg', '.m4a', '.aac', '.wma'];
+    const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.mkv'];
+    const supportedExtensions = [...audioExtensions, ...videoExtensions];
+
     Array.from(files).forEach((file) => {
-      if (supportedTypes.includes(file.type)) {
+      // Get file extension
+      const fileName = file.name.toLowerCase();
+      const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+      
+      // Check both MIME type and file extension
+      const isValidMimeType = supportedTypes.includes(file.type);
+      const isValidExtension = supportedExtensions.includes(fileExtension);
+      
+      // Also check if MIME type starts with audio/ or video/ (for generic types)
+      const isGenericAudio = file.type.startsWith('audio/');
+      const isGenericVideo = file.type.startsWith('video/');
+      
+      if (isValidMimeType || isValidExtension || isGenericAudio || isGenericVideo) {
+        // Determine file type
+        let fileType = 'video';
+        if (audioTypes.includes(file.type) || audioExtensions.includes(fileExtension) || isGenericAudio) {
+          fileType = 'audio';
+        } else if (videoTypes.includes(file.type) || videoExtensions.includes(fileExtension) || isGenericVideo) {
+          fileType = 'video';
+        }
+        
         validFiles.push({
           id: Date.now() + Math.random(),
           file,
-          type: audioTypes.includes(file.type) ? "audio" : "video",
+          type: fileType,
           name: file.name,
           size: file.size,
           status: "ready",
@@ -107,41 +149,180 @@ export function Upload() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const simulateUpload = async (files) => {
+  // Load test files on mount
+  useEffect(() => {
+    const loadTestFiles = async () => {
+      try {
+        setLoadingTestFiles(true);
+        const response = await guestAPI.getTestFiles();
+        if (response.status === 'success' && response.data) {
+          setTestFiles(response.data);
+        }
+      } catch (error) {
+        console.error('Error loading test files:', error);
+      } finally {
+        setLoadingTestFiles(false);
+      }
+    };
+    loadTestFiles();
+  }, []);
+
+  // Handle test file analysis
+  const handleTestFileAnalysis = async () => {
+    if (!selectedTestFile) {
+      setMessage("Please select a test file");
+      setMessageType("error");
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
-    setMessage("Uploading files...");
+    setMessage("Analyzing test file...");
     setMessageType("info");
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    try {
+      setUploadProgress(50);
       
-      // Simulate upload progress
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        setUploadProgress(progress);
+      // Analyze the test file directly
+      const analysisResponse = await guestAPI.analyzeTestFile(selectedTestFile, 'audio');
+      
+      if (analysisResponse.status === 'success' && analysisResponse.data?.analysisId) {
+        const analysisId = analysisResponse.data.analysisId;
+        setUploadProgress(100);
+        setMessage("Analysis complete! Redirecting to report...");
+        setMessageType("success");
+        
+        setTimeout(() => {
+          navigate(`/report/${analysisId}?guest=true`);
+        }, 1000);
+      } else {
+        throw new Error(analysisResponse.message || 'Analysis failed');
+      }
+    } catch (error) {
+      console.error('Test file analysis error:', error);
+      setMessage(`Error analyzing test file: ${error.message}`);
+      setMessageType("error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRealUpload = async (files) => {
+    setUploading(true);
+    setUploadProgress(0);
+    setMessage(isAuthenticated ? "Uploading files..." : "Quick submit: Uploading files (no account needed)...");
+    setMessageType("info");
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const fileItem = files[i];
+        const file = fileItem.file;
+        
+        // Update progress
+        const uploadProgress = Math.round(((i + 1) / files.length) * 50); // 0-50% for upload
+        setUploadProgress(uploadProgress);
         
         // Update file status
         setUploadedFiles((prev) =>
           prev.map((f) =>
-            f.id === file.id
-              ? { ...f, status: progress === 100 ? "uploaded" : "uploading", progress }
+            f.id === fileItem.id
+              ? { ...f, status: "uploading", progress: uploadProgress }
               : f
           )
         );
-      }
-    }
 
-    setUploading(false);
-    setMessage("Upload complete! Redirecting to report...");
-    setMessageType("success");
-    
-    // Wait a moment to show the success message, then redirect
-    setTimeout(() => {
-      // Hardcoded sample file name for temporary UI
-      const sampleFileName = "sampleFile"; // This will be used as the report ID
-      navigate(`/report/${sampleFileName}`);
-    }, 1500);
+        try {
+          let uploadResponse;
+          let analysisResponse;
+          
+          if (isAuthenticated) {
+            // Authenticated flow - save to database
+            uploadResponse = await uploadAPI.uploadFile(file);
+            
+            if (uploadResponse.status === 'success' && uploadResponse.data?.uploadId) {
+              const uploadId = uploadResponse.data.uploadId;
+              
+              // Update progress to 50-90% for analysis
+              setUploadProgress(50 + (i + 1) * 40 / files.length);
+              setMessage(`Analyzing ${file.name}...`);
+              
+              // Analyze the uploaded file
+              analysisResponse = await analysisAPI.analyzeFile(uploadId);
+            } else {
+              throw new Error(uploadResponse.message || 'Upload failed');
+            }
+          } else {
+            // Guest flow - no database storage
+            uploadResponse = await guestAPI.uploadFile(file);
+            
+            if (uploadResponse.status === 'success' && uploadResponse.data?.tempId) {
+              const { tempId, filePath, fileType } = uploadResponse.data;
+              
+              // Update progress to 50-90% for analysis
+              setUploadProgress(50 + (i + 1) * 40 / files.length);
+              setMessage(`Analyzing ${file.name}...`);
+              
+              // Analyze the uploaded file (guest mode)
+              analysisResponse = await guestAPI.analyzeFile(tempId, filePath, fileType);
+            } else {
+              throw new Error(uploadResponse.message || 'Upload failed');
+            }
+          }
+          
+          if (analysisResponse.status === 'success' && analysisResponse.data?.analysisId) {
+            const analysisId = analysisResponse.data.analysisId;
+            const isGuest = analysisResponse.data.isGuest || !isAuthenticated;
+            
+            // Update file status
+            setUploadedFiles((prev) =>
+              prev.map((f) =>
+                f.id === fileItem.id
+                  ? { 
+                      ...f, 
+                      status: "uploaded", 
+                      progress: 100,
+                      analysisId,
+                      isGuest
+                    }
+                  : f
+              )
+            );
+            
+            // If this is the last file, redirect to report
+            if (i === files.length - 1) {
+              setUploadProgress(100);
+              setMessage(isGuest 
+                ? "Analysis complete! Redirecting to report (results expire in 1 hour)..."
+                : "Upload and analysis complete! Redirecting to report...");
+              setMessageType("success");
+              
+              setTimeout(() => {
+                navigate(`/report/${analysisId}${isGuest ? '?guest=true' : ''}`);
+              }, 1000);
+            }
+          } else {
+            throw new Error(analysisResponse.message || 'Analysis failed');
+          }
+        } catch (error) {
+          console.error('Upload/Analysis error:', error);
+          setUploadedFiles((prev) =>
+            prev.map((f) =>
+              f.id === fileItem.id
+                ? { ...f, status: "error", progress: 0 }
+                : f
+            )
+          );
+          setMessage(`Error processing ${file.name}: ${error.message}`);
+          setMessageType("error");
+        }
+      }
+    } catch (error) {
+      console.error('Upload process error:', error);
+      setMessage(`Upload failed: ${error.message}`);
+      setMessageType("error");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -153,7 +334,7 @@ export function Upload() {
       return;
     }
 
-    await simulateUpload(filesToUpload);
+    await handleRealUpload(filesToUpload);
   };
 
   const getFileIcon = (type) => {
@@ -198,10 +379,81 @@ export function Upload() {
               }`}>
                 Media Upload
               </Typography>
+              {!isAuthenticated && (
+                <Alert color="blue" className="mb-4 max-w-2xl mx-auto">
+                  <Typography variant="small" className="font-medium">
+                    Quick Submit Mode: No account needed! Upload and analyze files instantly. 
+                    Results expire in 1 hour. <a href="/sign-up" className="underline font-semibold">Sign up</a> to save your analysis history.
+                  </Typography>
+                </Alert>
+              )}
               <Typography variant="small" className={`max-w-2xl mx-auto text-base ${getTextClasses(isDark, 'secondary')}`}>
                 Upload audio/video files for deepfake detection. Formats: MP3, WAV, MP4, AVI, MOV, WMV, MKV
               </Typography>
             </div>
+
+            {/* Test Files Section */}
+            {testFiles.length > 0 && (
+              <Card className={`shadow-2xl shadow-purple-500/20 backdrop-blur-xl ${getCardClasses(isDark)}`}>
+                <CardHeader color="transparent" floated={false} shadow={false} className="p-4 pb-2">
+                  <Typography variant="h6" className={`bg-clip-text text-transparent text-xl ${
+                    isDark 
+                      ? 'bg-gradient-to-r from-pink-400 to-purple-400'
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600'
+                  }`}>
+                    Test Files (Quick Analysis)
+                  </Typography>
+                  <Typography variant="small" className={getTextClasses(isDark, 'muted')}>
+                    Select a test file to analyze directly without uploading
+                  </Typography>
+                </CardHeader>
+                <CardBody className="p-4 pt-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className={`block mb-2 text-sm font-medium ${getTextClasses(isDark)}`}>
+                        Select Test File
+                      </label>
+                      <select
+                        value={selectedTestFile}
+                        onChange={(e) => setSelectedTestFile(e.target.value)}
+                        disabled={uploading}
+                        className={`w-full px-4 py-3 rounded-lg border-2 transition-all duration-300 ${
+                          isDark
+                            ? 'bg-black/50 border-purple-500/30 text-purple-100 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/50'
+                            : 'bg-white/80 border-purple-400/40 text-purple-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        <option value="">Choose a test file...</option>
+                        {testFiles.map((file) => (
+                          <option key={file.name} value={file.name}>
+                            {file.name} ({formatFileSize(file.size)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      size="lg"
+                      onClick={handleTestFileAnalysis}
+                      disabled={!selectedTestFile || uploading}
+                      className="px-6 py-3 bg-gradient-to-b from-[#497cff] to-[#001664] hover:from-[#5a8cff] hover:to-[#0020a0] text-white shadow-xl shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/70 transition-all duration-300 rounded-xl font-semibold"
+                    >
+                      {uploading ? "Analyzing..." : "Analyze Test File"}
+                    </Button>
+                  </div>
+                </CardBody>
+              </Card>
+            )}
+
+            {/* Divider */}
+            {testFiles.length > 0 && (
+              <div className="flex items-center gap-4 my-4">
+                <div className={`flex-1 h-px ${isDark ? 'bg-purple-500/30' : 'bg-purple-400/40'}`}></div>
+                <Typography variant="small" className={getTextClasses(isDark, 'muted')}>
+                  OR
+                </Typography>
+                <div className={`flex-1 h-px ${isDark ? 'bg-purple-500/30' : 'bg-purple-400/40'}`}></div>
+              </div>
+            )}
 
             {/* Upload Area */}
             <Card className={`shadow-2xl shadow-purple-500/20 backdrop-blur-xl ${getCardClasses(isDark)}`}>
@@ -234,7 +486,7 @@ export function Upload() {
                     </button>
                   </Typography>
                   <Typography variant="small" className={getTextClasses(isDark, 'muted')}>
-                    Audio: MP3, WAV, M4A, AAC • Video: MP4, AVI, MOV, WMV, MKV • Max: 100MB
+                    Audio: MP3, WAV, FLAC, OGG, M4A, AAC • Video: MP4, AVI, MOV, WMV, MKV • Max: 50MB
                   </Typography>
                 </div>
                 
@@ -242,7 +494,7 @@ export function Upload() {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept={supportedTypes.join(",")}
+                  accept={supportedTypes.join(",") + ",.flac,.ogg,.wma"}
                   onChange={handleFileInput}
                   className="hidden"
                 />

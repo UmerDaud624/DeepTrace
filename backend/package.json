@@ -5,8 +5,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node --no-warnings=DeprecationWarning server.js",
+    "dev": "nodemon --exec \"node --no-warnings=DeprecationWarning\" server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

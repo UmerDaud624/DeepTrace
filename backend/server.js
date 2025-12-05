@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import uploadRoutes from "./routes/upload.js";
 import analysisRoutes from "./routes/analysis.js";
+import guestRoutes from "./routes/guest.js";
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/analysis", analysisRoutes);
+app.use("/api/guest", guestRoutes);
 
 // 404 handler
 app.use("*", (req, res) => {

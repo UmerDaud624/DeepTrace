@@ -30,6 +30,14 @@ A comprehensive MERN stack application for detecting deepfakes in images, videos
 - **Multer** - File upload handling
 - **bcryptjs** - Password hashing
 
+### AI Module
+
+- **Python 3.8+** - For audio deepfake detection
+- **PyTorch** - Deep learning framework
+- **Librosa** - Audio processing
+- **Scikit-learn** - Machine learning (Random Forest)
+- **Ensemble Model** - Combined RF + CNN for audio analysis
+
 ### Database
 
 - **MySQL 8.0** - Hosted on Clever Cloud
@@ -41,6 +49,7 @@ A comprehensive MERN stack application for detecting deepfakes in images, videos
 - Node.js (v18.0.0 or higher)
 - npm (v8.0.0 or higher)
 - MySQL database (provided via Clever Cloud)
+- **Python 3.8+** (for audio deepfake detection)
 
 ## 🔧 Installation & Setup
 
@@ -91,7 +100,18 @@ UPLOAD_PATH=uploads/
 npm run backend:setup
 ```
 
-### 5. Start Development Servers
+### 5. Setup AI Module (for Audio Detection)
+
+Install Python dependencies for audio deepfake detection:
+
+```bash
+cd ai
+pip install -r requirements.txt
+```
+
+**Note:** See `SETUP_AI.md` for detailed AI setup instructions.
+
+### 6. Start Development Servers
 
 ```bash
 # Start both frontend and backend simultaneously
