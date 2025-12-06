@@ -3,6 +3,7 @@ import { Avatar, Typography, Button } from "@material-tailwind/react";
 import { UserCircleIcon, EnvelopeIcon, LockClosedIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getBackgroundClasses, getTextClasses, getGlowOrbClasses, getCardClasses } from "@/utils/theme";
+import { userAPI } from "@/services/api";
 
 export function Profile() {
   const { isDark } = useTheme();
@@ -10,36 +11,94 @@ export function Profile() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("profile.basic");
-      if (raw) {
-        const data = JSON.parse(raw);
-        setFullName(data.fullName || "");
-        setEmail(data.email || "");
-        setPassword(data.password || "");
-      }
-    } catch (_) {
-      // ignore parse errors
-    }
+    loadProfile();
   }, []);
 
-  const handleSave = (e) => {
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await userAPI.getProfile();
+      
+      if (response.status === 'success' && response.data?.user) {
+        const user = response.data.user;
+        // Combine firstName and lastName into fullName
+        const name = user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`.trim()
+          : user.firstName || user.lastName || "";
+        setFullName(name);
+        setEmail(user.email || "");
+        // Don't load password from backend for security
+        setPassword("");
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      setMessage("Failed to load profile. Please refresh the page.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     setMessage("");
+    
     if (!fullName || !email) {
       setMessage("Please provide name and email.");
       return;
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setMessage("Please provide a valid email address.");
+      return;
+    }
+
     setSaving(true);
-    const payload = { fullName, email, password };
+    
     try {
-      localStorage.setItem("profile.basic", JSON.stringify(payload));
-      setMessage("Profile updated successfully.");
-    } catch (_) {
-      setMessage("Failed to save. Please try again.");
+      // Prepare payload - only include password if it's been changed (not empty)
+      const payload = {
+        fullName,
+        email
+      };
+
+      // Only include password if user provided a new one
+      if (password && password.trim().length > 0) {
+        if (password.length < 6) {
+          setMessage("Password must be at least 6 characters long.");
+          setSaving(false);
+          return;
+        }
+        payload.password = password;
+      }
+
+      const response = await userAPI.updateProfile(payload);
+      
+      if (response.status === 'success') {
+        setMessage("Profile updated successfully.");
+        // Clear password field after successful save
+        setPassword("");
+        
+        // Update fullName and email from response if provided
+        if (response.data?.user) {
+          const user = response.data.user;
+          const name = user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}`.trim()
+            : user.firstName || user.lastName || "";
+          setFullName(name);
+          setEmail(user.email || "");
+        }
+      } else {
+        setMessage(response.message || "Failed to update profile.");
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      setMessage(error.message || "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -78,10 +137,10 @@ export function Profile() {
                     <UserCircleIcon className="h-16 w-16 text-white" />
                   </div>
                   <Typography variant="h5" className={`font-bold mb-2 text-xl ${getTextClasses(isDark)}`}>
-                    {fullName || "Your Name"}
+                    {loading ? "Loading..." : (fullName || "Your Name")}
                   </Typography>
                   <Typography className={`text-sm mb-6 ${getTextClasses(isDark, 'muted')}`}>
-                    {email || "your@email.com"}
+                    {loading ? "Loading..." : (email || "your@email.com")}
                   </Typography>
                   <div className="w-full pt-6 border-t border-purple-500/20">
                     <Typography className={`text-sm font-medium mb-3 ${getTextClasses(isDark, 'secondary')}`}>
@@ -153,13 +212,16 @@ export function Profile() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="********"
+                      placeholder="Leave blank to keep current password"
                       className={`w-full px-5 py-4 text-base border border-purple-500/30 rounded-xl focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all ${
                         isDark 
                           ? 'bg-black/50 text-gray-200 placeholder-gray-600'
                           : 'bg-white/50 text-gray-800 placeholder-gray-400'
                       }`}
                     />
+                    <p className={`text-xs mt-1 ${getTextClasses(isDark, 'muted')}`}>
+                      Leave blank to keep your current password
+                    </p>
                   </div>
 
                   {message && (
@@ -177,10 +239,10 @@ export function Profile() {
                   <div className="flex gap-4 pt-4">
                     <button
                       type="submit"
-                      disabled={saving}
+                      disabled={saving || loading}
                       className="flex-1 bg-gradient-to-b from-[#497cff] to-[#001664] hover:from-[#5a8cff] hover:to-[#0020a0] text-white py-4 rounded-xl font-semibold shadow-xl shadow-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg"
                     >
-                      {saving ? "Saving..." : "Save Changes"}
+                      {loading ? "Loading..." : (saving ? "Saving..." : "Save Changes")}
                     </button>
                     
                     <a
