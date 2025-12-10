@@ -18,6 +18,11 @@ backend/.env
 frontend/.env
 frontend/UI/.env
 
+ffmpeg/bin
+ffmpeg/doc
+ffmpeg/presets
+ffmpeg/README.txt
+ffmpeg/LICENSE
 # Build outputs
 dist/
 build/
